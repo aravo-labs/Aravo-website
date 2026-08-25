@@ -176,7 +176,8 @@ again.
 
 ## 9. Verify before cutting over
 
-Do all of this on the `*.vercel.app` and `*.onrender.com` addresses first,
+Do all of this on the temporary `vercel.app` and `onrender.com` addresses
+first,
 while the old deployments are still serving the real domains.
 
 - `GET /api/v1/health` and `/api/v1/ready` on the new backend
