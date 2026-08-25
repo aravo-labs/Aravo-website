@@ -1,0 +1,1015 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   ASCENT — the marketing design system
+   =========================================================================
+
+   One idea drives every decision here: GPS dies at the kerb, and the last
+   hundred metres of a delivery goes UP, through floors. So the page is an
+   ascent, and the visual language is that of a building SECTION drawing —
+   the drawing type that exists precisely to show what is inside and above.
+
+   Two colours carry meaning, and only two:
+
+     blueprint  the built world as drawn — structure, floors, grids, plan
+     signal     what we detect — the courier, the events, live data
+
+   Nothing is blueprint-coloured unless it is architecture, and nothing is
+   signal-coloured unless it is a measurement. That rule is the whole system;
+   keeping it is what stops the page turning into decoration.
+   ========================================================================= */
+
+@theme {
+  /* ---- ink ---------------------------------------------------------- */
+  --color-ink: #10171c;
+  --color-ink-2: #33424a;
+  --color-muted: #71828b;
+  --color-faint: #a2b0b7;
+
+  /* ---- ground ------------------------------------------------------- */
+  /* Off-white, with a trace of warmth held in it. The warmth is what keeps
+     this off the cold #fafafa every site in this sector sits on — at a
+     glance it reads as plain off-white, which is the point.
+     `sunken` moved up with it so the band contrast stays the same
+     half-step it was designed as, rather than turning into a grey stripe
+     against a lighter page. */
+  --color-canvas: #fafbfc;
+  --color-surface: #ffffff;
+  --color-sunken: #f2f4f5;
+  --color-rule: #e2e7e9;
+  --color-rule-strong: #cfd5d8;
+
+  /* ---- blueprint: the built environment ----------------------------- */
+  --color-blueprint: #62808f;
+  --color-blueprint-mid: #93a7b1;
+  --color-blueprint-soft: #c4d3d9;
+  --color-blueprint-wash: #edf2f4;
+
+  /* ---- signal: what the SDK detects --------------------------------- */
+  --color-signal: #367588;
+  --color-signal-deep: #24586a;
+  /* One step lighter than `signal`, for type that should read as the accent
+     without competing with the headline set in it. 4.2:1 on the canvas, which
+     is why it is only ever used at 600 weight and above. */
+  --color-signal-light: #3d8296;
+  --color-signal-soft: #d5e7ec;
+  --color-signal-wash: #f1f7f9;
+
+  /* ---- alert: a reading that is wrong ------------------------------- */
+  /* The one place a third hue is allowed. It marks the satellite fix in the
+     divergence map, where the whole point is that two marks disagree and the
+     reader must not have to work out which is which. Semantic, never
+     decorative: nothing else on the page is this colour. */
+  --color-alert: #b8372a;
+  --color-alert-deep: #8f2a20;
+
+  /* ---- type --------------------------------------------------------- */
+  /* Archivo has a squarer, more drawn skeleton than the Inter/SF Pro pairing
+     the sector defaults to. At display sizes that reads as draughting rather
+     than as a product UI. */
+  /* SF Pro Display first, then Inter.
+
+     SF Pro Display is the system face on Apple devices, so naming it here uses
+     the copy already installed rather than serving one - which is the whole
+     licence question, and the reason this is safe. Everyone else gets Inter,
+     which is the fallback the reference site declares anyway, so the two match
+     on every platform without shipping an Apple font file. */
+  --font-display: "SF Pro Display", var(--font-inter), system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "SF Pro Display", var(--font-inter), system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  /* Bigger and tighter than the reference, and at weight 500 rather than 400:
+     the ascent needs headlines with enough mass to anchor a full-bleed
+     drawing behind them. */
+  --text-display: 3.25rem;
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 500;
+
+  --text-title: 2.25rem;
+  --text-title--line-height: 1.08;
+  --text-title--letter-spacing: -0.028em;
+  --text-title--font-weight: 500;
+
+  --text-lede: 1.0625rem;
+  --text-lede--line-height: 1.6;
+
+  /* Mono labels: small, wide, uppercase. Every technical annotation on the
+     page uses exactly this. */
+  --text-label: 0.6875rem;
+  --text-label--letter-spacing: 0.14em;
+  --text-label--font-weight: 500;
+
+  /* ---- layout ------------------------------------------------------- */
+  --container-content: 71.875rem;
+}
+
+:root {
+  /*
+     The page's own width, and it grows with the display.
+
+     Pinned at 1150px the layout ignored the screen it was on: the same column
+     at 1280 and at 2560, with everything past it given over to margin. The
+     sentences inside sections carry their own limits in characters, so
+     widening the shell buys room for the things that want it - the drawing,
+     the tables, the code, the platform row - without letting prose run long.
+  */
+  --shell-max: 1150px;
+
+  /* Width of the elevation rail gutter. The rail is the page's spine, so
+     every section indents past it rather than each one guessing. */
+  --rail-w: 4.5rem;
+
+  /*
+     Everything stacked above the hero, so the first screen can be exactly one
+     screen. The hero subtracts this from the viewport instead of carrying a
+     fixed height, which on a tall display showed the next section before
+     anybody scrolled and on a short one pushed the button under the fold.
+  */
+  /* Deliberately a shade under what the navigation actually measures. Too
+     small and the hero is a few pixels taller than the gap, which nobody can
+     see; too large and the next section shows above the fold, which is the
+     thing this exists to stop. */
+  --chrome-h: 4.25rem;
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --shell-max: 1320px;
+  }
+}
+
+@media (min-width: 1800px) {
+  :root {
+    --shell-max: 1460px;
+  }
+}
+
+/*
+   The announcement strip is not always there, and it changes where the hero
+   starts. `:has` is what lets the hero find that out in CSS; where it is not
+   supported the hero is one strip taller than the viewport, which costs a
+   short scroll rather than the layout.
+*/
+:root:has([data-announcement]) {
+  --chrome-h: 7rem;
+}
+
+/* -------------------------------------------------------------------------
+   Backward-compatible aliases.
+
+   The careers, team, docs and SDK pages were built against the previous token
+   names and are not part of this redesign. Mapping the old names onto the new
+   values re-skins them for free, instead of leaving four pages on a palette
+   that no longer exists.
+   ------------------------------------------------------------------------- */
+.theme-marketing {
+  --color-accent: var(--color-signal);
+  --color-accent-hover: var(--color-signal-deep);
+  --color-accent-subtle: var(--color-signal-soft);
+  --color-accent-soft: var(--color-signal-soft);
+  --color-text: var(--color-ink);
+  --color-text-muted: var(--color-muted);
+  --color-border: var(--color-rule);
+
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-canvas);
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: #fff;
+}
+
+/* One focus treatment for the whole site. */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* =========================================================================
+   Textures — all drafting-paper derived
+   ========================================================================= */
+
+/* Fine drafting grid: 8px minor, 48px major. Sits behind the ascent so the
+   drawing has something to be measured against. */
+.tex-grid {
+  background-image:
+    linear-gradient(to right, rgba(107, 127, 158, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(107, 127, 158, 0.07) 1px, transparent 1px),
+    linear-gradient(to right, rgba(107, 127, 158, 0.13) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(107, 127, 158, 0.13) 1px, transparent 1px);
+  background-size:
+    8px 8px,
+    8px 8px,
+    48px 48px,
+    48px 48px;
+}
+
+/* Section hatch — what a cut face is filled with on an architectural
+   section. Used on blocks that represent structure. */
+.tex-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(20, 24, 31, 0.045) 0px,
+    rgba(20, 24, 31, 0.045) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+/* Heavier hatch for the poured-concrete ground plane. */
+.tex-ground {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(20, 24, 31, 0.1) 0px,
+    rgba(20, 24, 31, 0.1) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+
+/* Floor slabs. */
+.tex-slabs {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-rule) 0px,
+    var(--color-rule) 1px,
+    transparent 1px,
+    transparent 56px
+  );
+}
+
+/* Vertical ruled columns, kept from the old system for the CTA band. */
+.tex-columns {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule) 0px,
+    var(--color-rule) 1px,
+    transparent 1px,
+    transparent 40px
+  );
+}
+
+/* A measurement tick strip, like the edge of a scale rule. */
+.tex-ticks {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule-strong) 0px,
+    var(--color-rule-strong) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+
+/* =========================================================================
+   Reveals
+
+   Progressive enhancement. Modern browsers drive these off the scroll
+   position itself with `animation-timeline: view()`, which needs no
+   JavaScript and cannot desynchronise from the scroller. Where that is
+   unsupported, `useReveal`'s IntersectionObserver still sets
+   [data-visible] and the transition below handles it.
+   ========================================================================= */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+[data-reveal][data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@supports (animation-timeline: view()) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: revealRise linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 55%;
+  }
+}
+
+@keyframes revealRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* =========================================================================
+   The ascent
+
+   These are the only scroll-LINKED (as opposed to scroll-triggered)
+   animations on the page: their progress is the scroll position, not a
+   duration. That is what makes the climb feel driven by the reader rather
+   than played at them.
+   ========================================================================= */
+
+/* The rail marker: travels the full height of its track as the page scrolls.
+   Bottom to top, because scrolling DOWN the page is climbing UP the building.
+   Getting this backwards makes the rail argue with the content. */
+.ascent-marker {
+  animation: ascentClimb linear both;
+  animation-timeline: scroll(root block);
+}
+@keyframes ascentClimb {
+  from {
+    top: 100%;
+  }
+  to {
+    top: 0%;
+  }
+}
+
+/* Signal strength: fades out as the reader descends into the building. */
+.ascent-signal {
+  animation: signalDecay linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0% 42%;
+}
+@keyframes signalDecay {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.12;
+  }
+}
+
+/* A drawn line: strokes itself in as its section enters view. Requires
+   pathLength="1" on the SVG element so the dash maths is unit-free. */
+.draw-in {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawLine linear both;
+  animation-timeline: view();
+  animation-range: entry 10% cover 40%;
+}
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Floor plates settle in from below, bottom floor first. */
+.floor-in {
+  animation: floorIn cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 60%;
+}
+@keyframes floorIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* =========================================================================
+   The hero entrance
+
+   Everything here is duration-based, and that is the whole reason this block
+   exists separately from the scroll-driven set above.
+
+   The hero is already on screen when the page loads, so a view-timeline is the
+   wrong instrument for it: view progress is at or past the end of its range
+   before anyone has seen the element, which meant the route did not draw at
+   all — it was simply there. The scroll-driven versions stay correct for every
+   section below the fold, where the reader arrives at them.
+
+   The sequence tells the story in the order the story happens:
+
+     150ms   the ground and the envelope
+     250ms+  floor plates settle in, bottom storey first
+     420ms   satellite signal descends and stops at the roof
+     420ms   the copy rises (parallel — nobody should wait to read)
+     900ms   the route begins drawing, out at the kerb
+     1200ms  the signal bars fill
+     2400ms  the courier reaches the door; the drop-off lands and pulses
+   ========================================================================= */
+
+/* The route, stroking itself in from the kerb to the door. */
+.hero-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: heroDraw 1500ms cubic-bezier(0.33, 0, 0.25, 1) 900ms both;
+}
+@keyframes heroDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/*
+ * The courier: a scale figure walking the route.
+ *
+ * CSS motion path, following the exact same geometry the route polyline is
+ * generated from, so the figure cannot drift off the line.
+ *
+ * It walks SLOWLY and on a loop, and it deliberately does not chase the
+ * drawing tip. The draw is the opening statement — here is the path — and it
+ * needs to be quick, because a visitor should get the whole idea in under
+ * three seconds. The walk is the ambient one: this is a thing that keeps
+ * happening. Tying the two together would have forced the draw to crawl or the
+ * walk to sprint, and neither is what either is for.
+ *
+ * `offset-rotate: 0deg` keeps the figure upright. A figure banked over to
+ * follow a stair diagonal reads as falling, not climbing; the leg cycle and
+ * the bob are what say "climbing".
+ *
+ * Hidden unless `offset-path` is supported — without it the group would sit at
+ * the SVG origin, which is a person standing in the corner of the drawing
+ * rather than a missing flourish.
+ */
+.hero-courier {
+  opacity: 0;
+}
+/*
+ * One cycle: walk the route, hold at the door, vanish, return to the kerb
+ * unseen. The return leg is invisible on purpose — a figure sliding backwards
+ * down four storeys is the one frame that would break the whole illusion.
+ */
+@keyframes courierWalk {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  2% {
+    offset-distance: 1%;
+    opacity: 1;
+  }
+  86% {
+    offset-distance: 100%;
+    opacity: 1;
+  }
+  94% {
+    offset-distance: 100%;
+    opacity: 1;
+  }
+  97%,
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@supports (offset-path: path("M 0 0 L 1 1")) {
+  .hero-courier {
+    offset-rotate: 0deg;
+    animation: courierWalk 17s linear 2600ms infinite;
+  }
+}
+
+/*
+ * The walk cycle: two poses, alternating.
+ *
+ * A two-frame cycle rather than rotating limbs about a hip. At this scale —
+ * the figure is under fifty user units tall — two clean poses read as walking
+ * better than interpolated rotation does, and it avoids fighting SVG's
+ * transform origins for every limb. `steps(1)` makes the swap a cut, which is
+ * how hand-drawn cycles work.
+ */
+.walk-a,
+.walk-b {
+  animation-duration: 0.8s;
+  animation-timing-function: steps(1, end);
+  animation-iteration-count: infinite;
+}
+.walk-a {
+  animation-name: walkPoseA;
+}
+.walk-b {
+  animation-name: walkPoseB;
+}
+@keyframes walkPoseA {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes walkPoseB {
+  0% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* The body rising and falling on each step. Small: 1.5 user units. Any more
+   and a walk becomes a bounce. */
+.walk-bob {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: walkBob 0.8s ease-in-out infinite;
+}
+@keyframes walkBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+/* Floor plates, settling in bottom-up. Delay is set per storey inline. */
+.hero-floor {
+  animation: floorIn 700ms cubic-bezier(0.22, 1, 0.36, 1) var(--floor-delay, 0ms)
+    both;
+}
+
+/* The satellite rays, arriving from above. */
+.hero-rays {
+  animation: raysDown 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both;
+}
+@keyframes raysDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The drop-off, landing as the courier arrives. */
+.hero-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dotLand 520ms cubic-bezier(0.34, 1.32, 0.5, 1) 2360ms both;
+}
+@keyframes dotLand {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * The halo's gate.
+ *
+ * A wrapper rather than a delay on the pulse itself. `fill-mode: both` holds
+ * an animation's FIRST keyframe throughout its delay, and the pulse opens at
+ * 0.16 opacity — so a delayed pulse sat visible at the door for two seconds
+ * before the courier had arrived. Gating it from outside keeps the pulse
+ * itself a plain infinite loop with nothing to special-case.
+ */
+.hero-halo {
+  animation: haloIn 240ms linear 2400ms both;
+}
+@keyframes haloIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Signal bars growing from their baseline. Delay set per bar inline. */
+.hero-bar {
+  transform-origin: bottom;
+  animation: barGrow 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--bar-delay, 0ms)
+    both;
+}
+@keyframes barGrow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* The live pulse on a detected event. Duration-based on purpose: a
+   measurement that is happening now should not stop when scrolling does.
+ *
+ * `transform-box: fill-box` is load-bearing, not tidiness. A CSS transform on
+ * an SVG element scales about the SVG's own origin by default, not about the
+ * shape — so without this the halo did not expand in place, it flew across the
+ * drawing on a diagonal as it grew. The same declaration is correct for the
+ * <div> uses of this class, where it resolves to the element's own box. */
+.pulse-signal {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulseSignal 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulseSignal {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+/* Hero entrance, staged: ground, then structure, then copy. Kept
+   duration-based because it plays once, on load, before any scrolling. */
+.stage {
+  animation: stageIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--stage-delay, 0ms);
+}
+@keyframes stageIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* =========================================================================
+   Reduced motion
+
+   Everything resolves to its finished state. The ascent is legible as a
+   static drawing — that was a constraint on the design, not a fallback
+   bolted on afterwards.
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  [data-reveal],
+  .stage,
+  .floor-in,
+  .draw-in,
+  .ascent-signal,
+  .hero-draw,
+  .hero-floor,
+  .hero-rays,
+  .hero-dot,
+  .hero-bar {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* The courier only makes sense in motion, so it is simply not shown. The
+     route it would travel is already drawn. */
+  .hero-courier,
+  .walk-a,
+  .walk-b,
+  .walk-bob {
+    animation: none !important;
+  }
+  .hero-courier {
+    opacity: 0 !important;
+  }
+
+  .hero-halo {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Rests at the door: the ascent is shown complete rather than unstarted. */
+  .ascent-marker {
+    animation: none !important;
+    top: 0% !important;
+  }
+
+  .pulse-signal {
+    animation: none !important;
+    opacity: 0.16 !important;
+  }
+}
+
+/**
+ * Callouts on the hero drawing.
+ *
+ * They arrive after the building and the route have drawn themselves, one at a
+ * time in the order the delivery happens. Appearing with the drawing would
+ * make four labels land on an empty frame; appearing in sequence makes the
+ * page narrate the journey rather than annotate a picture.
+ */
+.volume-callout {
+  opacity: 0;
+  animation: calloutIn 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: var(--callout-delay, 0ms);
+}
+
+@keyframes calloutIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .volume-callout {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* =========================================================================
+   Rich text
+   =========================================================================
+
+   Copy written in the admin panel's editor, rendered as HTML. The elements
+   are styled here rather than by a prose plugin so the output sits in this
+   palette, and the four size steps are named classes rather than inline
+   styles: a `style` attribute cannot be allowed narrowly - permitting
+   font-size permits position and background-image in the same breath - so
+   the editor writes a class and the API only lets these four through.
+   ========================================================================= */
+
+.rich-text > *:first-child {
+  margin-top: 0;
+}
+.rich-text p {
+  margin-bottom: 1rem;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--color-muted);
+}
+/* Anchored headings clear the sticky docs header instead of landing
+   underneath it when a contents link is followed. */
+.rich-text h2[id],
+.rich-text h3[id] {
+  scroll-margin-top: 5.5rem;
+}
+.rich-text h2 {
+  margin: 2.5rem 0 1rem;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.rich-text h3 {
+  margin: 2.5rem 0 0.75rem;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+.rich-text h4 {
+  margin: 2rem 0 0.5rem;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.rich-text a {
+  color: var(--color-signal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text a:hover {
+  text-decoration: none;
+}
+.rich-text strong {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.rich-text ul,
+.rich-text ol {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+}
+.rich-text ul {
+  list-style: disc;
+}
+.rich-text ol {
+  list-style: decimal;
+}
+.rich-text li {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+.rich-text li::marker {
+  color: var(--color-signal);
+}
+/* The editor wraps each list item's content in a paragraph. Left alone, every
+   bullet inherits paragraph margins and the list falls apart into loose
+   lines. */
+.rich-text li > p {
+  margin: 0;
+}
+.rich-text blockquote {
+  margin-bottom: 1rem;
+  border-left: 2px solid var(--color-signal);
+  padding-left: 1rem;
+  font-style: italic;
+  color: var(--color-muted);
+}
+.rich-text mark {
+  border-radius: 2px;
+  /* Tinted from the accent rather than the usual highlighter yellow, which
+     would be the only warm colour on the site and would read as a mistake. */
+  background: var(--color-signal-soft);
+  padding: 0 0.2em;
+  color: var(--color-signal-deep);
+}
+.rich-text hr {
+  margin: 2rem 0;
+  border-color: var(--color-rule);
+}
+.rich-text code {
+  border-radius: 3px;
+  background: var(--color-signal-soft);
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-signal-deep);
+}
+.rich-text pre {
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  background: #111827;
+  padding: 1rem;
+  line-height: 1.7;
+  color: #e5e7eb;
+}
+/* Inside a block the background would double up as a box within a box. */
+.rich-text pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 13px;
+}
+/* A wide table scrolls inside its own box rather than pushing the page. */
+.rich-text table {
+  margin-bottom: 1.25rem;
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  text-align: left;
+}
+.rich-text th {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.625rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.rich-text td {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.625rem 1rem;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+/* The size steps. Named, so the API can hold them to a closed set, and
+   relative, so they stay inside the type scale instead of becoming loose
+   pixel values that drift away from everything around them. */
+.rich-text .rt-sm {
+  font-size: 0.875em;
+}
+.rich-text .rt-base {
+  font-size: 1em;
+}
+.rich-text .rt-lg {
+  font-size: 1.25em;
+}
+.rich-text .rt-xl {
+  font-size: 1.5em;
+}
+
+/* =========================================================================
+   Syntax highlighting
+   =========================================================================
+
+   Written against the highlighter's own class names rather than importing one
+   of its stylesheets, so the colours sit in this palette instead of a
+   library's, and so a light theme and three dark ones can share one set of
+   rules. `currentColor` carries the base text colour from whichever theme the
+   block is painted in.
+   ========================================================================= */
+
+.hljs {
+  color: currentColor;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section {
+  color: #7dd3c0;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-variable,
+.hljs-addition {
+  color: #b9d98a;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #e5b567;
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_,
+.hljs-name {
+  color: #8ec3e8;
+}
+.hljs-comment,
+.hljs-quote {
+  color: currentColor;
+  opacity: 0.5;
+  font-style: italic;
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-meta {
+  color: #c3a6e0;
+}
+.hljs-variable,
+.hljs-params,
+.hljs-property {
+  color: currentColor;
+}
+.hljs-deletion {
+  color: #e88b8b;
+}
+
+/* The one light theme needs darker tokens: the colours above are chosen to
+   carry on a near-black ground and go pale on paper. */
+.bg-sunken .hljs-keyword,
+.bg-sunken .hljs-selector-tag,
+.bg-sunken .hljs-literal,
+.bg-sunken .hljs-section {
+  color: #0f766e;
+}
+.bg-sunken .hljs-string,
+.bg-sunken .hljs-attr,
+.bg-sunken .hljs-addition {
+  color: #4d7c0f;
+}
+.bg-sunken .hljs-number,
+.bg-sunken .hljs-symbol {
+  color: #b45309;
+}
+.bg-sunken .hljs-title,
+.bg-sunken .hljs-name {
+  color: #1d4ed8;
+}
+.bg-sunken .hljs-type,
+.bg-sunken .hljs-built_in,
+.bg-sunken .hljs-meta {
+  color: #7c3aed;
+}
