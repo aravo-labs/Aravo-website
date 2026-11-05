@@ -14,6 +14,69 @@ npm run dev      # http://localhost:4200
 
 `npm run build` produces a fully static export of `/`.
 
+## Two backends, on purpose
+
+This site talks to two services and they share nothing:
+
+```
+the CMS API         :8010   public pages, docs, careers, the SDK access form
+the platform API    :8020   signup, login, and everything under /dashboard
+```
+
+Separate deployments on separate Supabase projects, so they get separate
+clients (`src/lib/api` and `src/lib/platform`) and separate environment
+variables. One shared `NEXT_PUBLIC_API_URL` would point half the app at the
+wrong service the moment either address changed.
+
+```bash
+npm run api:types        # regenerate from ../Aravo-website-backend
+npm run platform:types   # regenerate from ../aravo-platform-api
+```
+
+## The dashboard
+
+Signed-in customers get `/dashboard`: usage, delivery history with filters,
+one delivery in detail, devices, API keys and settings.
+
+Its primitives are in `src/components/dashboard/ui.tsx`, built on the tokens
+the marketing pages already use. Deliberately **not** the admin panel's
+component library: that one has its own token names, and importing it would
+put two design systems in one repo where every component has to be checked
+against both.
+
+Three things the screens are careful about:
+
+**There is no movement path, and that is not a missing feature.** Phone motion
+sensors measure acceleration and rotation, not position, so a path has to be
+built by adding movement up over time and every small error compounds. Indoors
+the compass is disturbed by steel, lift motors and wiring. After a few minutes
+of walking a drawn path can be well out and pointing the wrong way, so the
+delivery page shows what was recorded and says why it draws nothing.
+
+**`inconclusive` is a warning, never an error.** It means no usable sensor data
+arrived - a phone that was off, out of battery, in a bag, or force closed. That
+is a real outcome of a real delivery, and a red badge teaches a dispatcher to
+chase the wrong thing.
+
+**An API key is shown once.** Only a hash is stored, so nobody can recover it
+later, and both the screens that issue one say so at the moment it matters
+rather than afterwards.
+
+## What the front-end audits found
+
+Five passes over both this repo and the admin. The interesting ones were
+invisible to TypeScript and to ESLint; only running the pages showed them.
+
+| Found | Why it mattered |
+|---|---|
+| `useAsync` imported `ApiRequestError` from the **CMS** client | Two classes, same shape, so `instanceof` compiled and linted clean and then failed at runtime. Every error in the whole dashboard collapsed to "Something went wrong / INTERNAL_ERROR" - expired session, rate limit, suspension, all identical, request id lost. |
+| `?next=` was used raw | `/login?next=https://evil.example` sent a customer off-site immediately after typing their password on the real site. Now only same-site paths, protocol-relative and backslash forms rejected. |
+| A rejected token dead-ended | The screen showed an error with a Try again button that could never succeed, and the dead session survived a reload onto the same dead end. Now it clears the session and returns to sign-in, remembering where you were. |
+| Filter boxes queried per keystroke | Seven characters, seven searches, six obsolete before they returned. Debounced, and the abort signal now actually reaches the fetch. |
+| Filter controls had no labels | A screen reader announced "combo box" with nothing to say what it filtered. |
+| "Open" x25 and "Download" x4 | Tabbing a table announced the same word over and over with no way to tell the rows apart. |
+| Failures were not announced at all | `role="alert"` on failures, `role="status"` on loading. |
+
 ## Related repos
 
 The admin panel is a **separate application** on its own origin, so it never
@@ -152,3 +215,53 @@ which is deliberately not committed: it holds screenshots of a third-party
 site used to work out spacing and type, and it is not something to ship in a
 client repo.
 
+
+## Deploying to AWS
+
+```sh
+set -a; . ./.env.production; set +a      # process env beats .env.local
+NEXT_OUTPUT=export npm run build
+node scripts/build-cf-function.mjs out scripts/cf-dir-index.js
+npm test                                  # asserts the generated rewrites
+
+aws s3 sync out/ s3://aravo-web-site/ --delete --profile aravo \
+  --cache-control "public,max-age=31536000,immutable" \
+  --exclude "*.html" --exclude "*.json" --exclude "*.txt"
+aws s3 sync out/ s3://aravo-web-site/ --delete --profile aravo \
+  --cache-control "public,max-age=0,must-revalidate" \
+  --exclude "*" --include "*.html" --include "*.json" --include "*.txt"
+
+ETAG=$(aws cloudfront describe-function --name aravo-web-routes --query ETag --output text --profile aravo)
+NEW=$(aws cloudfront update-function --name aravo-web-routes --if-match "$ETAG" --profile aravo \
+  --function-config 'Comment=Website routing - directory index plus dynamic-route shells,Runtime=cloudfront-js-2.0' \
+  --function-code fileb://scripts/cf-dir-index.js --query ETag --output text)
+aws cloudfront publish-function --name aravo-web-routes --if-match "$NEW" --profile aravo
+aws cloudfront create-invalidation --distribution-id E2YVIWNBANHCTE --paths '/*' --profile aravo
+```
+
+The first line is not optional: Next ranks `.env.local` above `.env.production`,
+so without exporting the values first the build silently uses the localhost
+URLs in `.env.local` and fails trying to reach the CMS.
+
+`aravo-web-routes` belongs to this distribution alone. The admin and CMS panels
+share a different function, `aravo-dir-index`, which only does the
+directory-index rewrite. Keep them separate: this one's reserved list is
+generated from this site's `out/`, so pointing the panels at it rewrites
+`/companies/` and `/jobs/` to a shell that does not exist there and every one
+of their routes 404s. That happened once.
+
+### What needs a rebuild, and what does not
+
+Content edited in the admin panel is live immediately - the pages fetch it in
+the browser, so changing a doc page, a FAQ, the site settings or a banner needs
+nothing from us.
+
+A page at a **new URL** used to need one, because an export writes a file per
+known slug. It no longer does: each dynamic route also pre-renders a shell, the
+CloudFront function sends unknown slugs to it, and the shell reads the slug from
+the address bar. Publishing a doc page or a role now works straight away.
+
+A rebuild is still needed for a change to the site's own code or layout, and to
+add a **new top-level route** of the kind that is not CMS content - the function's
+reserved list is generated from `out/`, so it only knows what the last build
+produced.

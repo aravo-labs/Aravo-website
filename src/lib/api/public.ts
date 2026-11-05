@@ -45,6 +45,13 @@ async function fetchAll<T>(
   /** Extra query values carried onto every page of the walk, e.g. a platform. */
   extra?: Record<string, string>,
 ): Promise<Paged<T>> {
+  // Nothing to fetch from, so fetch nothing. Every list on this site is
+  // content: open roles, the team, documentation, FAQs. A site with no content
+  // backend has none of them, which is an empty list rather than an error, and
+  // asking anyway puts a failed request in the console of every visitor who
+  // opens developer tools.
+  if (!CMS_ENABLED) return { items: [], pagination: null };
+
   const first = await requestPaged<T>(path, {
     query: { ...extra, page: 1, page_size: MAX_PAGE_SIZE },
     ...CACHED,
@@ -69,6 +76,35 @@ async function fetchAll<T>(
 }
 
 /** In-flight or resolved settings for this page load. See `siteSettings`. */
+/**
+ * Whether a content backend is wired up at all.
+ *
+ * Off unless explicitly enabled. The marketing pages have working defaults
+ * for everything the settings carry, so a site with no content API should
+ * stand up on its own rather than depend on one being reachable.
+ */
+const CMS_ENABLED = process.env.NEXT_PUBLIC_CMS_ENABLED === "true";
+
+/**
+ * What the site says about itself when nothing tells it otherwise.
+ *
+ * Deliberately complete rather than partial: a caller reading
+ * `settings.docs_title` should never have to wonder whether it is defined.
+ */
+const DEFAULT_SITE_SETTINGS: SiteSettingsPublic = {
+  company_name: "Aravo",
+  icon_url: null,
+  hiring_enabled: false,
+  whatsapp_number: null,
+  linkedin_url: null,
+  x_url: null,
+  docs_title: "SDK documentation",
+  docs_intro: "How to send delivery tracking data to Aravo.",
+  docs_cta_label: "Get an API key",
+  docs_cta_url: "/signup",
+  docs_home_html: "",
+};
+
 let settingsOnce: Promise<SiteSettingsPublic> | null = null;
 
 export const publicApi = {
@@ -86,7 +122,9 @@ export const publicApi = {
     request<DocPagePublic>(`/public/docs/${slug}`, CACHED),
 
   banner: (): Promise<BannerPublic | null> =>
-    request<BannerPublic | null>("/public/banner", CACHED),
+    CMS_ENABLED
+      ? request<BannerPublic | null>("/public/banner", CACHED)
+      : Promise.resolve(null),
 
   platforms: (): Promise<Paged<PlatformPublic>> =>
     fetchAll<PlatformPublic>("/public/platforms"),
@@ -117,10 +155,30 @@ export const publicApi = {
    * One promise, reused; a failure is not cached, so the next caller retries.
    */
   siteSettings: (): Promise<SiteSettingsPublic> => {
+    // No content backend configured: answer with the defaults and make no
+    // request at all.
+    //
+    // This is not only a tidiness measure. The settings call fires on every
+    // page, from the layout, and when the content API is unreachable the
+    // browser logs the failure itself - a CORS refusal and a failed resource.
+    // Catching the rejection does not suppress those; only not making the
+    // request does. So every page of the marketing site was showing two red
+    // errors in the console of anybody who opened developer tools, caused by
+    // a backend that is not ours and has been down for weeks.
+    //
+    // Defaults rather than a thrown error, because none of this is load
+    // bearing: a company name, an icon, some documentation copy. A page that
+    // fails because a settings row is missing is worse than one that uses
+    // sensible values.
+    if (!CMS_ENABLED) return Promise.resolve(DEFAULT_SITE_SETTINGS);
+
     settingsOnce ??= request<SiteSettingsPublic>("/public/site-settings", CACHED).catch(
-      (error: unknown) => {
+      () => {
+        // Not rethrown. A content API that is down should leave the product
+        // looking ordinary, not broken. The failure is not cached, so the
+        // next page load tries again.
         settingsOnce = null;
-        throw error;
+        return DEFAULT_SITE_SETTINGS;
       },
     );
     return settingsOnce;

@@ -51,6 +51,12 @@ export function Nav() {
             </a>
           ))}
           <a
+            href={site.nav.signIn.href}
+            className="font-mono text-label text-ink-2 uppercase transition-colors hover:text-signal"
+          >
+            {site.nav.signIn.label}
+          </a>
+          <a
             href={site.nav.cta.href}
             className="rounded-[3px] bg-ink px-5 py-2.5 font-mono text-label text-white uppercase transition-colors hover:bg-signal"
           >
@@ -97,6 +103,13 @@ export function Nav() {
               {l.label}
             </a>
           ))}
+          <a
+            href={site.nav.signIn.href}
+            onClick={() => setOpen(false)}
+            className="py-2.5 font-mono text-label text-ink-2 uppercase"
+          >
+            {site.nav.signIn.label}
+          </a>
           <a
             href={site.nav.cta.href}
             className="mt-2 rounded-[3px] bg-ink px-5 py-3 text-center font-mono text-label text-white uppercase"

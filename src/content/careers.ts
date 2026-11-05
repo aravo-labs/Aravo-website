@@ -18,6 +18,13 @@ export type Job = {
 
 export const careers = {
   eyebrow: "We're hiring",
+
+  // Shown instead of the above when no roles are open, along with `note` being
+  // dropped. Same reason the intro was rewritten in August: this page said
+  // "We're hiring" and "click on any position below" over an empty list, which
+  // is a claim the page itself disproves two screens later. A candidate who
+  // reads that learns the site is not maintained.
+  eyebrowClosed: "Working here",
   title: "Aravo Careers",
 
   // Rewritten 2026-08-19. The previous version claimed to be "the first

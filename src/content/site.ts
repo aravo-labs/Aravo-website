@@ -55,7 +55,8 @@ export const site = {
       { label: "Team", href: "/team" },
       { label: "Careers", href: "/careers" },
     ],
-    cta: { label: "Contact us", href: "/sdk-access" },
+    cta: { label: "Get API key", href: "/signup" },
+    signIn: { label: "Sign in", href: "/login" },
   },
 
   /* No default text. Anything here is a public factual claim, so it belongs to

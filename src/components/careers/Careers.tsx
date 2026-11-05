@@ -73,10 +73,17 @@ function JobDetailLoader({
 function JobList({ onOpen }: { onOpen: (slug: string) => void }) {
   const state = useAsync(() => publicApi.jobs(), []);
 
+  // Only claim to be hiring when a role is actually open, and default to not
+  // claiming it until the list has arrived. The wrong way round matters: a
+  // page that says "We're hiring" and then shows nothing has contradicted
+  // itself, whereas one that says "Working here" and then lists two roles has
+  // only been modest for a moment.
+  const hasRoles = (state.data?.items.length ?? 0) > 0;
+
   return (
     <div>
       <div className="flex flex-col gap-5 px-6 pt-14 pb-10 sm:px-10 lg:pt-20">
-        <Eyebrow>{careers.eyebrow}</Eyebrow>
+        <Eyebrow>{hasRoles ? careers.eyebrow : careers.eyebrowClosed}</Eyebrow>
         <h1 className="text-[2rem] leading-[1.2] font-normal tracking-[-0.01em] text-[var(--color-accent)] sm:text-[2.5rem]">
           {careers.title}
         </h1>
@@ -89,13 +96,16 @@ function JobList({ onOpen }: { onOpen: (slug: string) => void }) {
           ))}
         </div>
 
-        <div className="mt-6 flex max-w-[68ch] flex-col gap-2">
-          {careers.note.map((p) => (
-            <p key={p} className="text-[15px] leading-[1.65] text-[var(--color-muted)] sm:text-base">
-              {p}
-            </p>
-          ))}
-        </div>
+        {/* "Click on any position below" only makes sense when there is one. */}
+        {hasRoles ? (
+          <div className="mt-6 flex max-w-[68ch] flex-col gap-2">
+            {careers.note.map((p) => (
+              <p key={p} className="text-[15px] leading-[1.65] text-[var(--color-muted)] sm:text-base">
+                {p}
+              </p>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* roles. The anchor is what the page's own call to action points at,
